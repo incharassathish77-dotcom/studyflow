@@ -1,24 +1,24 @@
-# STUDYFLOW Security Specification (Phase 0)
+# STUDYFLOW Security Specification (Simplified Student Task Manager)
 
 ## 1. Data Invariants
 
-1. **Authentication & Provider Isolation**: All mutations across all 11 collections (`users`, `tasks`, `assignments`, `studySessions`, `exams`, `timetable`, `notes`, `goals`, `focusSessions`, `notifications`, `calendarEvents`) require an authenticated Firebase session (`email_verified == true`, `password`, or `anonymous` guest demo session) with strict `request.auth.uid` ownership checks.
-2. **Strict Ownership Isolation**: Every document is scoped to `request.auth.uid` via `userId` (or `uid` on `/users/{userId}`). Cross-user `get`, `list`, `create`, `update`, and `delete` operations are denied. `/users/{userId}` forbids `list` queries entirely to prevent user enumeration/PII scraping.
-3. **Immutable Ownership & Creation Timestamps**: `userId`/`uid` and `createdAt` cannot be modified after creation. Server timestamps (`request.time`) are enforced on `createdAt` and `updatedAt`.
-4. **Strict Key & Volumetric Bounds**: Every collection enforces exact `keys().hasAll(...)` + `keys().hasOnly(...)` allowlists, bounded string lengths, enum checks, and `affectedKeys().hasOnly(...)` action branches on updates.
-5. **Bounded Arrays**: `users.subjects` is bounded to max 30 string entries (<= 80 chars).
+1. **Direct Classroom Access (No Login)**: Per explicit user specification for a login-free classroom reference project, `/tasks/{taskId}` permits direct application-level read, create, update, and delete operations without requiring user authentication.
+2. **Global Deny-All Safety Net**: Every other collection path in Firestore is explicitly denied (`match /{document=**} { allow read, write: if false; }`).
+3. **Strict Schema & Key Allowlisting**: Every `/tasks/{taskId}` document enforces exact `keys().hasAll(...)` and `keys().hasOnly(...)` allowlists (`title`, `description`, `category`, `dueDate`, `dueTime`, `priority`, `status`, `completedAt`, `createdAt`, `updatedAt`) to prevent shadow field injection.
+4. **Immutable Creation Timestamp & Server Time Enforcement**: `createdAt == request.time` and `updatedAt == request.time` are enforced on creation; `createdAt == existing().createdAt` and `updatedAt == request.time` are enforced on update, with `affectedKeys().hasOnly(...)` restricting mutable fields.
+5. **Typed Bounds & Enum Validation**: `title` (1..140 chars), `description` (<=1200 chars), `category`, `priority` (`Low`/`Medium`/`High`), `status` (`Pending`/`In Progress`/`Completed`), `dueDate` (`YYYY-MM-DD` or empty), and `dueTime` (`HH:MM` or empty) are strictly validated.
 
-## 2. The "Dirty Dozen" Adversarial Payloads
+## 2. Adversarial Validation Cases
 
-1. Unauthenticated read or write on any collection.
-2. Unverified email create on `/tasks/{taskId}`.
-3. User ID spoofing (`userId: "other_uid"`) on `/assignments/{id}` or `/notes/{id}`.
-4. Listing `/users` collection to scrape emails.
-5. Shadow field injection (`isAdmin: true`) on `/users/{uid}` or `/tasks/{id}`.
-6. Oversized `content` (> 5000 chars) on `/notes/{id}`.
-7. Invalid enum values (e.g., `status: "Deleted"` on `/tasks/{id}` or `cadence: "Yearly"` on `/goals/{id}`).
-8. Client-spoofed `createdAt` / `completedAt` on `/focusSessions/{id}`.
-9. Attempting `update` on immutable `/focusSessions/{id}`.
-10. Cross-user `list` query without `where("userId", "==", request.auth.uid)`.
-11. Altering `userId` or `createdAt` during an `update` on `/exams/{id}`.
-12. Cross-user `delete` on `/timetable/{id}` or `/calendarEvents/{id}`.
+1. Malformed `taskId` (contains invalid characters or exceeds 128 chars).
+2. Missing required fields on task create.
+3. Shadow field injection (`isAdmin: true` or arbitrary extra keys) on task create or update.
+4. Empty or oversized `title` (>140 chars).
+5. Oversized `description` (>1200 chars).
+6. Invalid `category` enum.
+7. Invalid `priority` enum (e.g., `Urgent`).
+8. Invalid `status` enum (e.g., `Deleted`).
+9. Malformed `dueDate` (not `YYYY-MM-DD` or empty).
+10. Client-spoofed `createdAt` or `updatedAt` timestamp on create.
+11. Altering `createdAt` during task update.
+12. Accessing any collection outside `/tasks/{taskId}` (e.g., `/users/{id}`, `/notes/{id}`).

@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { requireAuth, type AuthenticatedRequest } from '../middleware/auth.ts';
 
 const router = Router();
 
@@ -7,7 +6,6 @@ export const TASK_LIMITS = {
   TITLE_MIN_LENGTH: 1,
   TITLE_MAX_LENGTH: 140,
   DESCRIPTION_MAX_LENGTH: 1200,
-  SUBJECT_MAX_LENGTH: 80,
   CATEGORIES: [
     'Academic',
     'Personal',
@@ -55,15 +53,7 @@ function escapeCsvCell(value: unknown): string {
   return neutralized;
 }
 
-router.get('/session', requireAuth, (req: AuthenticatedRequest, res) => {
-  res.json({
-    authenticated: true,
-    user: req.user,
-    limits: TASK_LIMITS,
-  });
-});
-
-router.post('/validate', requireAuth, (req: AuthenticatedRequest, res) => {
+router.post('/validate', (req, res) => {
   const body = req.body as Record<string, unknown> | null;
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     res.status(400).json({ valid: false, error: 'Request body must be a JSON object.' });
@@ -95,15 +85,6 @@ router.post('/validate', requireAuth, (req: AuthenticatedRequest, res) => {
     !TASK_LIMITS.CATEGORIES.includes(category as (typeof TASK_LIMITS.CATEGORIES)[number])
   ) {
     errors.category = 'Please choose a valid task category.';
-  }
-
-  const rawSubject = body.subject ?? '';
-  if (typeof rawSubject !== 'string') {
-    errors.subject = 'Subject must be text.';
-  }
-  const subject = typeof rawSubject === 'string' ? rawSubject.trim() : '';
-  if (subject.length > TASK_LIMITS.SUBJECT_MAX_LENGTH) {
-    errors.subject = `Subject must be ${TASK_LIMITS.SUBJECT_MAX_LENGTH} characters or fewer.`;
   }
 
   const rawDueDate = body.dueDate ?? '';
@@ -158,7 +139,6 @@ router.post('/validate', requireAuth, (req: AuthenticatedRequest, res) => {
       title,
       description,
       category,
-      subject,
       dueDate,
       dueTime,
       priority,
@@ -168,7 +148,7 @@ router.post('/validate', requireAuth, (req: AuthenticatedRequest, res) => {
   });
 });
 
-router.post('/export', requireAuth, (req: AuthenticatedRequest, res) => {
+router.post('/export', (req, res) => {
   const body = req.body as { tasks?: unknown } | null;
   if (!body || !Array.isArray(body.tasks)) {
     res.status(400).json({ error: 'Tasks array is required for export.' });
@@ -182,7 +162,6 @@ router.post('/export', requireAuth, (req: AuthenticatedRequest, res) => {
   const header = [
     'Title',
     'Category',
-    'Subject',
     'Description',
     'Due Date',
     'Due Time',
@@ -195,16 +174,11 @@ router.post('/export', requireAuth, (req: AuthenticatedRequest, res) => {
   for (const item of body.tasks) {
     if (!item || typeof item !== 'object') continue;
     const task = item as Record<string, unknown>;
-    if (task.userId !== req.user?.uid) {
-      res.status(403).json({ error: 'Cannot export tasks belonging to another user.' });
-      return;
-    }
 
     rows.push(
       [
         escapeCsvCell(task.title),
         escapeCsvCell(task.category || 'Academic'),
-        escapeCsvCell(task.subject || ''),
         escapeCsvCell(task.description),
         escapeCsvCell(task.dueDate || 'No due date'),
         escapeCsvCell(task.dueTime || ''),

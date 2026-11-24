@@ -9,20 +9,6 @@ service cloud.firestore {
     }
 
     // --- Primitive Helpers ---
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // Supports verified OAuth accounts (Google), Email/Password accounts, and Anonymous Guest Demo sessions.
-    // All document access remains strictly isolated by request.auth.uid.
-    function isVerifiedUser() {
-      return isSignedIn() && (
-        request.auth.token.email_verified == true ||
-        request.auth.token.firebase.sign_in_provider == 'password' ||
-        request.auth.token.firebase.sign_in_provider == 'anonymous'
-      );
-    }
-
     function isValidId(id) {
       return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
@@ -39,88 +25,25 @@ service cloud.firestore {
       return val is string && val.size() <= 10 && val.matches('^(|\\d{4}-\\d{2}-\\d{2})$');
     }
 
-    function isValidDateReq(val) {
-      return val is string && val.size() == 10 && val.matches('^\\d{4}-\\d{2}-\\d{2}$');
-    }
-
     function isValidTimeOpt(val) {
       return val is string && val.size() <= 5 && val.matches('^(|\\d{2}:\\d{2})$');
     }
 
-    function isValidTimeReq(val) {
-      return val is string && val.size() == 5 && val.matches('^\\d{2}:\\d{2}$');
-    }
-
-    // --- 1. User Profile ---
-    function isValidUserProfile(data) {
-      return data.keys().hasAll([
-          'uid', 'displayName', 'email', 'photoURL',
-          'weeklyStudyGoalHours', 'defaultFocusMinutes',
-          'defaultShortBreakMinutes', 'defaultLongBreakMinutes',
-          'subjects', 'createdAt', 'updatedAt'
-        ])
-        && data.keys().hasOnly([
-          'uid', 'displayName', 'email', 'photoURL',
-          'weeklyStudyGoalHours', 'defaultFocusMinutes',
-          'defaultShortBreakMinutes', 'defaultLongBreakMinutes',
-          'subjects', 'createdAt', 'updatedAt'
-        ])
-        && data.uid is string && isValidId(data.uid) && data.uid == request.auth.uid
-        && data.displayName is string && data.displayName.size() <= 100
-        && data.email is string && data.email.size() <= 160
-        && data.photoURL is string && data.photoURL.size() <= 500
-        && data.weeklyStudyGoalHours is number && data.weeklyStudyGoalHours >= 1 && data.weeklyStudyGoalHours <= 100
-        && data.defaultFocusMinutes is number && data.defaultFocusMinutes >= 5 && data.defaultFocusMinutes <= 120
-        && data.defaultShortBreakMinutes is number && data.defaultShortBreakMinutes >= 1 && data.defaultShortBreakMinutes <= 60
-        && data.defaultLongBreakMinutes is number && data.defaultLongBreakMinutes >= 5 && data.defaultLongBreakMinutes <= 90
-        && data.subjects is list && data.subjects.size() <= 30
-        && (data.subjects.size() == 0 || (data.subjects[0] is string && data.subjects[0].size() <= 80))
-        && data.createdAt is timestamp
-        && data.updatedAt is timestamp;
-    }
-
-    match /users/{userId} {
-      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
-      allow list: if false;
-      allow create: if isVerifiedUser()
-        && isValidId(userId)
-        && request.auth.uid == userId
-        && isValidUserProfile(incoming())
-        && incoming().createdAt == request.time
-        && incoming().updatedAt == request.time;
-      allow update: if isVerifiedUser()
-        && isValidId(userId)
-        && request.auth.uid == userId
-        && isValidUserProfile(incoming())
-        && incoming().uid == existing().uid
-        && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time
-        && incoming().diff(existing()).affectedKeys().hasOnly([
-          'displayName', 'email', 'photoURL',
-          'weeklyStudyGoalHours', 'defaultFocusMinutes',
-          'defaultShortBreakMinutes', 'defaultLongBreakMinutes',
-          'subjects', 'updatedAt'
-        ]);
-      allow delete: if false;
-    }
-
-    // --- 2. Tasks ---
+    // --- Tasks ---
     function isValidTask(data) {
       return data.keys().hasAll([
-          'userId', 'title', 'description', 'category', 'subject',
+          'title', 'description', 'category',
           'dueDate', 'dueTime', 'priority', 'status', 'completedAt',
           'createdAt', 'updatedAt'
         ])
         && data.keys().hasOnly([
-          'userId', 'title', 'description', 'category', 'subject',
+          'title', 'description', 'category',
           'dueDate', 'dueTime', 'priority', 'status', 'completedAt',
           'createdAt', 'updatedAt'
         ])
-        && data.userId is string && isValidId(data.userId) && data.userId == request.auth.uid
         && data.title is string && data.title.size() >= 1 && data.title.size() <= 140
         && data.description is string && data.description.size() <= 1200
         && data.category in ['Academic', 'Personal', 'Projects', 'Coding Practice', 'College Activities', 'Other']
-        && data.subject is string && data.subject.size() <= 80
         && isValidDateOpt(data.dueDate)
         && isValidTimeOpt(data.dueTime)
         && data.priority in ['Low', 'Medium', 'High']
@@ -131,408 +54,27 @@ service cloud.firestore {
     }
 
     match /tasks/{taskId} {
-      allow get: if isSignedIn() && isValidId(taskId) && existing().userId == request.auth.uid;
-      allow list: if isSignedIn() && existing().userId == request.auth.uid;
-      allow create: if isVerifiedUser()
-        && isValidId(taskId)
+      allow get: if isValidId(taskId);
+      allow list: if true;
+      allow create: if isValidId(taskId)
         && isValidTask(incoming())
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
-      allow update: if isVerifiedUser()
-        && isValidId(taskId)
+      allow update: if isValidId(taskId)
         && isValidTask(incoming())
-        && existing().userId == request.auth.uid
-        && incoming().userId == existing().userId
         && incoming().createdAt == existing().createdAt
         && incoming().updatedAt == request.time
         && (
           incoming().diff(existing()).affectedKeys().hasOnly(['status', 'completedAt', 'updatedAt'])
           ||
+          incoming().diff(existing()).affectedKeys().hasOnly(['priority', 'updatedAt'])
+          ||
           incoming().diff(existing()).affectedKeys().hasOnly([
-            'title', 'description', 'category', 'subject',
+            'title', 'description', 'category',
             'dueDate', 'dueTime', 'priority', 'status', 'completedAt', 'updatedAt'
           ])
         );
-      allow delete: if isVerifiedUser() && isValidId(taskId) && existing().userId == request.auth.uid;
-    }
-
-    // --- 3. Assignments ---
-    function isValidAssignment(data) {
-      return data.keys().hasAll([
-          'userId', 'title', 'subject', 'description', 'assignedDate',
-          'dueDate', 'priority', 'status', 'createdAt', 'updatedAt'
-        ])
-        && data.keys().hasOnly([
-          'userId', 'title', 'subject', 'description', 'assignedDate',
-          'dueDate', 'priority', 'status', 'createdAt', 'updatedAt'
-        ])
-        && data.userId is string && isValidId(data.userId) && data.userId == request.auth.uid
-        && data.title is string && data.title.size() >= 1 && data.title.size() <= 140
-        && data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 80
-        && data.description is string && data.description.size() <= 1200
-        && isValidDateOpt(data.assignedDate)
-        && isValidDateReq(data.dueDate)
-        && data.priority in ['Low', 'Medium', 'High']
-        && data.status in ['Not Started', 'In Progress', 'Submitted']
-        && data.createdAt is timestamp
-        && data.updatedAt is timestamp;
-    }
-
-    match /assignments/{assignmentId} {
-      allow get: if isSignedIn() && isValidId(assignmentId) && existing().userId == request.auth.uid;
-      allow list: if isSignedIn() && existing().userId == request.auth.uid;
-      allow create: if isVerifiedUser()
-        && isValidId(assignmentId)
-        && isValidAssignment(incoming())
-        && incoming().createdAt == request.time
-        && incoming().updatedAt == request.time;
-      allow update: if isVerifiedUser()
-        && isValidId(assignmentId)
-        && isValidAssignment(incoming())
-        && existing().userId == request.auth.uid
-        && incoming().userId == existing().userId
-        && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time
-        && (
-          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
-          ||
-          incoming().diff(existing()).affectedKeys().hasOnly([
-            'title', 'subject', 'description', 'assignedDate',
-            'dueDate', 'priority', 'status', 'updatedAt'
-          ])
-        );
-      allow delete: if isVerifiedUser() && isValidId(assignmentId) && existing().userId == request.auth.uid;
-    }
-
-    // --- 4. Study Sessions ---
-    function isValidStudySession(data) {
-      return data.keys().hasAll([
-          'userId', 'subject', 'title', 'description', 'date',
-          'startTime', 'endTime', 'durationMinutes', 'studyGoal', 'status',
-          'createdAt', 'updatedAt'
-        ])
-        && data.keys().hasOnly([
-          'userId', 'subject', 'title', 'description', 'date',
-          'startTime', 'endTime', 'durationMinutes', 'studyGoal', 'status',
-          'createdAt', 'updatedAt'
-        ])
-        && data.userId is string && isValidId(data.userId) && data.userId == request.auth.uid
-        && data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 80
-        && data.title is string && data.title.size() >= 1 && data.title.size() <= 140
-        && data.description is string && data.description.size() <= 1000
-        && isValidDateReq(data.date)
-        && isValidTimeReq(data.startTime)
-        && isValidTimeReq(data.endTime)
-        && data.durationMinutes is number && data.durationMinutes >= 1 && data.durationMinutes <= 720
-        && data.studyGoal is string && data.studyGoal.size() <= 200
-        && data.status in ['Scheduled', 'Completed']
-        && data.createdAt is timestamp
-        && data.updatedAt is timestamp;
-    }
-
-    match /studySessions/{sessionId} {
-      allow get: if isSignedIn() && isValidId(sessionId) && existing().userId == request.auth.uid;
-      allow list: if isSignedIn() && existing().userId == request.auth.uid;
-      allow create: if isVerifiedUser()
-        && isValidId(sessionId)
-        && isValidStudySession(incoming())
-        && incoming().createdAt == request.time
-        && incoming().updatedAt == request.time;
-      allow update: if isVerifiedUser()
-        && isValidId(sessionId)
-        && isValidStudySession(incoming())
-        && existing().userId == request.auth.uid
-        && incoming().userId == existing().userId
-        && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time
-        && (
-          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
-          ||
-          incoming().diff(existing()).affectedKeys().hasOnly([
-            'subject', 'title', 'description', 'date',
-            'startTime', 'endTime', 'durationMinutes', 'studyGoal', 'status', 'updatedAt'
-          ])
-        );
-      allow delete: if isVerifiedUser() && isValidId(sessionId) && existing().userId == request.auth.uid;
-    }
-
-    // --- 5. Exams ---
-    function isValidExam(data) {
-      return data.keys().hasAll([
-          'userId', 'examName', 'subject', 'examDate', 'examTime',
-          'examType', 'preparationStatus', 'importantTopics', 'notes',
-          'createdAt', 'updatedAt'
-        ])
-        && data.keys().hasOnly([
-          'userId', 'examName', 'subject', 'examDate', 'examTime',
-          'examType', 'preparationStatus', 'importantTopics', 'notes',
-          'createdAt', 'updatedAt'
-        ])
-        && data.userId is string && isValidId(data.userId) && data.userId == request.auth.uid
-        && data.examName is string && data.examName.size() >= 1 && data.examName.size() <= 140
-        && data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 80
-        && isValidDateReq(data.examDate)
-        && isValidTimeOpt(data.examTime)
-        && data.examType in ['Midterm', 'Final', 'Quiz', 'Practical', 'Viva', 'Other']
-        && data.preparationStatus in ['Not Started', 'In Progress', 'Ready']
-        && data.importantTopics is string && data.importantTopics.size() <= 1000
-        && data.notes is string && data.notes.size() <= 1000
-        && data.createdAt is timestamp
-        && data.updatedAt is timestamp;
-    }
-
-    match /exams/{examId} {
-      allow get: if isSignedIn() && isValidId(examId) && existing().userId == request.auth.uid;
-      allow list: if isSignedIn() && existing().userId == request.auth.uid;
-      allow create: if isVerifiedUser()
-        && isValidId(examId)
-        && isValidExam(incoming())
-        && incoming().createdAt == request.time
-        && incoming().updatedAt == request.time;
-      allow update: if isVerifiedUser()
-        && isValidId(examId)
-        && isValidExam(incoming())
-        && existing().userId == request.auth.uid
-        && incoming().userId == existing().userId
-        && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time
-        && (
-          incoming().diff(existing()).affectedKeys().hasOnly(['preparationStatus', 'updatedAt'])
-          ||
-          incoming().diff(existing()).affectedKeys().hasOnly([
-            'examName', 'subject', 'examDate', 'examTime',
-            'examType', 'preparationStatus', 'importantTopics', 'notes', 'updatedAt'
-          ])
-        );
-      allow delete: if isVerifiedUser() && isValidId(examId) && existing().userId == request.auth.uid;
-    }
-
-    // --- 6. Timetable ---
-    function isValidTimetableEntry(data) {
-      return data.keys().hasAll([
-          'userId', 'dayOfWeek', 'startTime', 'endTime',
-          'subject', 'faculty', 'classroom', 'createdAt', 'updatedAt'
-        ])
-        && data.keys().hasOnly([
-          'userId', 'dayOfWeek', 'startTime', 'endTime',
-          'subject', 'faculty', 'classroom', 'createdAt', 'updatedAt'
-        ])
-        && data.userId is string && isValidId(data.userId) && data.userId == request.auth.uid
-        && data.dayOfWeek in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-        && isValidTimeReq(data.startTime)
-        && isValidTimeReq(data.endTime)
-        && data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 80
-        && data.faculty is string && data.faculty.size() <= 100
-        && data.classroom is string && data.classroom.size() <= 60
-        && data.createdAt is timestamp
-        && data.updatedAt is timestamp;
-    }
-
-    match /timetable/{entryId} {
-      allow get: if isSignedIn() && isValidId(entryId) && existing().userId == request.auth.uid;
-      allow list: if isSignedIn() && existing().userId == request.auth.uid;
-      allow create: if isVerifiedUser()
-        && isValidId(entryId)
-        && isValidTimetableEntry(incoming())
-        && incoming().createdAt == request.time
-        && incoming().updatedAt == request.time;
-      allow update: if isVerifiedUser()
-        && isValidId(entryId)
-        && isValidTimetableEntry(incoming())
-        && existing().userId == request.auth.uid
-        && incoming().userId == existing().userId
-        && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time
-        && incoming().diff(existing()).affectedKeys().hasOnly([
-          'dayOfWeek', 'startTime', 'endTime', 'subject', 'faculty', 'classroom', 'updatedAt'
-        ]);
-      allow delete: if isVerifiedUser() && isValidId(entryId) && existing().userId == request.auth.uid;
-    }
-
-    // --- 7. Notes ---
-    function isValidNote(data) {
-      return data.keys().hasAll(['userId', 'title', 'subject', 'content', 'isPinned', 'createdAt', 'updatedAt'])
-        && data.keys().hasOnly(['userId', 'title', 'subject', 'content', 'isPinned', 'createdAt', 'updatedAt'])
-        && data.userId is string && isValidId(data.userId) && data.userId == request.auth.uid
-        && data.title is string && data.title.size() >= 1 && data.title.size() <= 140
-        && data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 80
-        && data.content is string && data.content.size() >= 1 && data.content.size() <= 5000
-        && data.isPinned is bool
-        && data.createdAt is timestamp
-        && data.updatedAt is timestamp;
-    }
-
-    match /notes/{noteId} {
-      allow get: if isSignedIn() && isValidId(noteId) && existing().userId == request.auth.uid;
-      allow list: if isSignedIn() && existing().userId == request.auth.uid;
-      allow create: if isVerifiedUser()
-        && isValidId(noteId)
-        && isValidNote(incoming())
-        && incoming().createdAt == request.time
-        && incoming().updatedAt == request.time;
-      allow update: if isVerifiedUser()
-        && isValidId(noteId)
-        && isValidNote(incoming())
-        && existing().userId == request.auth.uid
-        && incoming().userId == existing().userId
-        && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time
-        && (
-          incoming().diff(existing()).affectedKeys().hasOnly(['isPinned', 'updatedAt'])
-          ||
-          incoming().diff(existing()).affectedKeys().hasOnly(['title', 'subject', 'content', 'isPinned', 'updatedAt'])
-        );
-      allow delete: if isVerifiedUser() && isValidId(noteId) && existing().userId == request.auth.uid;
-    }
-
-    // --- 8. Goals ---
-    function isValidGoal(data) {
-      return data.keys().hasAll([
-          'userId', 'title', 'description', 'cadence', 'targetValue',
-          'currentValue', 'unit', 'status', 'completedAt', 'createdAt', 'updatedAt'
-        ])
-        && data.keys().hasOnly([
-          'userId', 'title', 'description', 'cadence', 'targetValue',
-          'currentValue', 'unit', 'status', 'completedAt', 'createdAt', 'updatedAt'
-        ])
-        && data.userId is string && isValidId(data.userId) && data.userId == request.auth.uid
-        && data.title is string && data.title.size() >= 1 && data.title.size() <= 140
-        && data.description is string && data.description.size() <= 600
-        && data.cadence in ['Daily', 'Weekly']
-        && data.targetValue is number && data.targetValue >= 1 && data.targetValue <= 10000
-        && data.currentValue is number && data.currentValue >= 0 && data.currentValue <= 10000
-        && data.unit is string && data.unit.size() >= 1 && data.unit.size() <= 30
-        && data.status in ['Active', 'Completed']
-        && data.completedAt is string && data.completedAt.size() <= 32
-        && data.createdAt is timestamp
-        && data.updatedAt is timestamp;
-    }
-
-    match /goals/{goalId} {
-      allow get: if isSignedIn() && isValidId(goalId) && existing().userId == request.auth.uid;
-      allow list: if isSignedIn() && existing().userId == request.auth.uid;
-      allow create: if isVerifiedUser()
-        && isValidId(goalId)
-        && isValidGoal(incoming())
-        && incoming().createdAt == request.time
-        && incoming().updatedAt == request.time;
-      allow update: if isVerifiedUser()
-        && isValidId(goalId)
-        && isValidGoal(incoming())
-        && existing().userId == request.auth.uid
-        && incoming().userId == existing().userId
-        && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time
-        && (
-          incoming().diff(existing()).affectedKeys().hasOnly(['currentValue', 'status', 'completedAt', 'updatedAt'])
-          ||
-          incoming().diff(existing()).affectedKeys().hasOnly([
-            'title', 'description', 'cadence', 'targetValue', 'currentValue', 'unit', 'status', 'completedAt', 'updatedAt'
-          ])
-        );
-      allow delete: if isVerifiedUser() && isValidId(goalId) && existing().userId == request.auth.uid;
-    }
-
-    // --- 9. Focus Sessions ---
-    function isValidFocusSession(data) {
-      return data.keys().hasAll(['userId', 'mode', 'durationMinutes', 'subject', 'date', 'completedAt', 'createdAt'])
-        && data.keys().hasOnly(['userId', 'mode', 'durationMinutes', 'subject', 'date', 'completedAt', 'createdAt'])
-        && data.userId is string && isValidId(data.userId) && data.userId == request.auth.uid
-        && data.mode in ['focus', 'shortBreak', 'longBreak']
-        && data.durationMinutes is number && data.durationMinutes >= 1 && data.durationMinutes <= 180
-        && data.subject is string && data.subject.size() <= 80
-        && isValidDateReq(data.date)
-        && data.completedAt is timestamp
-        && data.createdAt is timestamp;
-    }
-
-    match /focusSessions/{focusId} {
-      allow get: if isSignedIn() && isValidId(focusId) && existing().userId == request.auth.uid;
-      allow list: if isSignedIn() && existing().userId == request.auth.uid;
-      allow create: if isVerifiedUser()
-        && isValidId(focusId)
-        && isValidFocusSession(incoming())
-        && incoming().completedAt == request.time
-        && incoming().createdAt == request.time;
-      allow update: if false;
-      allow delete: if isVerifiedUser() && isValidId(focusId) && existing().userId == request.auth.uid;
-    }
-
-    // --- 10. Notifications ---
-    function isValidNotification(data) {
-      return data.keys().hasAll(['userId', 'sourceKey', 'type', 'title', 'message', 'dueDate', 'isRead', 'createdAt', 'updatedAt'])
-        && data.keys().hasOnly(['userId', 'sourceKey', 'type', 'title', 'message', 'dueDate', 'isRead', 'createdAt', 'updatedAt'])
-        && data.userId is string && isValidId(data.userId) && data.userId == request.auth.uid
-        && data.sourceKey is string && data.sourceKey.size() >= 1 && data.sourceKey.size() <= 128
-        && data.type in ['assignment', 'exam', 'task', 'study']
-        && data.title is string && data.title.size() >= 1 && data.title.size() <= 140
-        && data.message is string && data.message.size() >= 1 && data.message.size() <= 400
-        && isValidDateOpt(data.dueDate)
-        && data.isRead is bool
-        && data.createdAt is timestamp
-        && data.updatedAt is timestamp;
-    }
-
-    match /notifications/{notificationId} {
-      allow get: if isSignedIn() && isValidId(notificationId) && existing().userId == request.auth.uid;
-      allow list: if isSignedIn() && existing().userId == request.auth.uid;
-      allow create: if isVerifiedUser()
-        && isValidId(notificationId)
-        && isValidNotification(incoming())
-        && incoming().createdAt == request.time
-        && incoming().updatedAt == request.time;
-      allow update: if isVerifiedUser()
-        && isValidId(notificationId)
-        && isValidNotification(incoming())
-        && existing().userId == request.auth.uid
-        && incoming().userId == existing().userId
-        && incoming().sourceKey == existing().sourceKey
-        && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time
-        && incoming().diff(existing()).affectedKeys().hasOnly(['isRead', 'updatedAt']);
-      allow delete: if isVerifiedUser() && isValidId(notificationId) && existing().userId == request.auth.uid;
-    }
-
-    // --- 11. Calendar Events ---
-    function isValidCalendarEvent(data) {
-      return data.keys().hasAll([
-          'userId', 'title', 'description', 'date', 'startTime', 'endTime',
-          'eventType', 'createdAt', 'updatedAt'
-        ])
-        && data.keys().hasOnly([
-          'userId', 'title', 'description', 'date', 'startTime', 'endTime',
-          'eventType', 'createdAt', 'updatedAt'
-        ])
-        && data.userId is string && isValidId(data.userId) && data.userId == request.auth.uid
-        && data.title is string && data.title.size() >= 1 && data.title.size() <= 140
-        && data.description is string && data.description.size() <= 800
-        && isValidDateReq(data.date)
-        && isValidTimeOpt(data.startTime)
-        && isValidTimeOpt(data.endTime)
-        && data.eventType in ['Personal Event', 'Study Session', 'Task', 'Assignment', 'Exam']
-        && data.createdAt is timestamp
-        && data.updatedAt is timestamp;
-    }
-
-    match /calendarEvents/{eventId} {
-      allow get: if isSignedIn() && isValidId(eventId) && existing().userId == request.auth.uid;
-      allow list: if isSignedIn() && existing().userId == request.auth.uid;
-      allow create: if isVerifiedUser()
-        && isValidId(eventId)
-        && isValidCalendarEvent(incoming())
-        && incoming().createdAt == request.time
-        && incoming().updatedAt == request.time;
-      allow update: if isVerifiedUser()
-        && isValidId(eventId)
-        && isValidCalendarEvent(incoming())
-        && existing().userId == request.auth.uid
-        && incoming().userId == existing().userId
-        && incoming().createdAt == existing().createdAt
-        && incoming().updatedAt == request.time
-        && incoming().diff(existing()).affectedKeys().hasOnly([
-          'title', 'description', 'date', 'startTime', 'endTime', 'eventType', 'updatedAt'
-        ]);
-      allow delete: if isVerifiedUser() && isValidId(eventId) && existing().userId == request.auth.uid;
+      allow delete: if isValidId(taskId);
     }
   }
 }

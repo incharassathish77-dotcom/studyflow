@@ -21,10 +21,10 @@ export default defineConfig(() => {
         ],
         manifest: {
           id: '/',
-          name: 'STUDYFLOW — Academic Planner',
+          name: 'STUDYFLOW — Student Task Manager',
           short_name: 'STUDYFLOW',
           description:
-            'Plan Smarter. Study Better. Achieve More. Student productivity, tasks, calendar, exams, and study analytics.',
+            'Plan Smarter. Study Better. Achieve More. Student task management and interactive monthly calendar.',
           theme_color: '#4F46E5',
           background_color: '#F8FAFC',
           display: 'standalone',

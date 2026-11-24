@@ -4,7 +4,6 @@ import express from 'express';
 import dotenv from 'dotenv';
 import healthRouter from './server/routes/health.ts';
 import tasksRouter from './server/routes/tasks.ts';
-import academicRouter from './server/routes/academic.ts';
 
 dotenv.config();
 
@@ -20,7 +19,6 @@ async function startServer() {
 
   app.use('/api/health', healthRouter);
   app.use('/api/tasks', tasksRouter);
-  app.use('/api/academic', academicRouter);
 
   app.use('/api', (_req, res) => {
     res.status(404).json({ error: 'API endpoint not found.' });

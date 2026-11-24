@@ -13,7 +13,6 @@ import { getTodayStr } from '../../utils/dateUtils.ts';
 interface TaskModalProps {
   isOpen: boolean;
   editingTask: Task | null;
-  subjects: string[];
   defaultDate?: string;
   onClose: () => void;
   onSubmit: (values: TaskFormValues) => Promise<void>;
@@ -22,7 +21,6 @@ interface TaskModalProps {
 export function TaskModal({
   isOpen,
   editingTask,
-  subjects,
   defaultDate,
   onClose,
   onSubmit,
@@ -30,7 +28,6 @@ export function TaskModal({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<TaskCategory>('Academic');
-  const [subject, setSubject] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [dueTime, setDueTime] = useState('');
   const [priority, setPriority] = useState<PriorityLevel>('Medium');
@@ -45,7 +42,6 @@ export function TaskModal({
       setTitle(editingTask.title);
       setDescription(editingTask.description);
       setCategory(editingTask.category);
-      setSubject(editingTask.subject);
       setDueDate(editingTask.dueDate);
       setDueTime(editingTask.dueTime);
       setPriority(editingTask.priority);
@@ -54,7 +50,6 @@ export function TaskModal({
       setTitle('');
       setDescription('');
       setCategory('Academic');
-      setSubject(subjects[0] ?? '');
       setDueDate(defaultDate ?? getTodayStr());
       setDueTime('');
       setPriority('Medium');
@@ -63,7 +58,18 @@ export function TaskModal({
     setFieldErrors({});
     setSubmitError(null);
     setIsSubmitting(false);
-  }, [isOpen, editingTask, subjects, defaultDate]);
+  }, [isOpen, editingTask, defaultDate]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSubmitting) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isSubmitting, onClose]);
 
   if (!isOpen) return null;
 
@@ -90,11 +96,14 @@ export function TaskModal({
         title: title.trim(),
         description: description.trim(),
         category,
-        subject: subject.trim(),
         dueDate: dueDate.trim(),
         dueTime: dueTime.trim(),
         priority,
         status,
+        completedAt:
+          status === 'Completed'
+            ? editingTask?.completedAt || new Date().toISOString()
+            : '',
       });
       onClose();
     } catch (err) {
@@ -143,7 +152,7 @@ export function TaskModal({
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Implement B+ Tree Indexing Lab"
+              placeholder="e.g., Complete Database Normalization Worksheet"
               className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15"
               autoFocus
             />
@@ -156,10 +165,10 @@ export function TaskModal({
             </label>
             <textarea
               id="sf-task-desc"
-              rows={2}
+              rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Notes, subtasks, or deliverables..."
+              placeholder="Add notes, instructions, or deliverables..."
               className="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15"
             />
             {fieldErrors.description && (
@@ -167,41 +176,20 @@ export function TaskModal({
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="sf-task-cat" className="block text-sm font-medium text-slate-700 mb-1">
-                Category
-              </label>
-              <select
-                id="sf-task-cat"
-                value={category}
-                onChange={(e) => setCategory(e.target.value as TaskCategory)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-indigo-500"
-              >
-                {STUDYFLOW_LIMITS.CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="sf-task-subj" className="block text-sm font-medium text-slate-700 mb-1">
-                Subject
-              </label>
-              <input
-                id="sf-task-subj"
-                list="studyflow-subjects-list"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="Select or type subject"
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:border-indigo-500"
-              />
-              <datalist id="studyflow-subjects-list">
-                {subjects.map((s) => (
-                  <option key={s} value={s} />
-                ))}
-              </datalist>
-            </div>
+          <div>
+            <label htmlFor="sf-task-cat" className="block text-sm font-medium text-slate-700 mb-1">
+              Category
+            </label>
+            <select
+              id="sf-task-cat"
+              value={category}
+              onChange={(e) => setCategory(e.target.value as TaskCategory)}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-indigo-500"
+            >
+              {STUDYFLOW_LIMITS.CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -220,7 +208,7 @@ export function TaskModal({
 
             <div>
               <label htmlFor="sf-task-time" className="block text-sm font-medium text-slate-700 mb-1">
-                Due Time
+                Due Time <span className="text-slate-400 font-normal">(optional)</span>
               </label>
               <input
                 id="sf-task-time"
@@ -271,14 +259,14 @@ export function TaskModal({
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 cursor-pointer"
+              className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 whitespace-nowrap shrink-0 cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60 cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg disabled:opacity-60 whitespace-nowrap shrink-0 cursor-pointer"
             >
               {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
               {editingTask ? 'Save Changes' : 'Create Task'}

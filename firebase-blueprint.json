@@ -1,34 +1,13 @@
 {
   "entities": {
-    "UserProfile": {
-      "title": "UserProfile",
-      "description": "Authenticated student profile, academic subjects, and timer/study preferences.",
-      "type": "object",
-      "properties": {
-        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "displayName": { "type": "string", "minLength": 0, "maxLength": 100 },
-        "email": { "type": "string", "minLength": 0, "maxLength": 160 },
-        "photoURL": { "type": "string", "minLength": 0, "maxLength": 500 },
-        "weeklyStudyGoalHours": { "type": "number" },
-        "defaultFocusMinutes": { "type": "number" },
-        "defaultShortBreakMinutes": { "type": "number" },
-        "defaultLongBreakMinutes": { "type": "number" },
-        "subjects": { "type": "array" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["uid", "displayName", "email", "photoURL", "weeklyStudyGoalHours", "defaultFocusMinutes", "defaultShortBreakMinutes", "defaultLongBreakMinutes", "subjects", "createdAt", "updatedAt"]
-    },
     "Task": {
       "title": "Task",
-      "description": "A student task with category, subject, schedule, priority, and status.",
+      "description": "A student task with title, description, category, due date, priority, and status.",
       "type": "object",
       "properties": {
-        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
         "title": { "type": "string", "minLength": 1, "maxLength": 140 },
         "description": { "type": "string", "minLength": 0, "maxLength": 1200 },
         "category": { "type": "string", "enum": ["Academic", "Personal", "Projects", "Coding Practice", "College Activities", "Other"] },
-        "subject": { "type": "string", "minLength": 0, "maxLength": 80 },
         "dueDate": { "type": "string", "minLength": 0, "maxLength": 10, "pattern": "^(|\\d{4}-\\d{2}-\\d{2})$" },
         "dueTime": { "type": "string", "minLength": 0, "maxLength": 5, "pattern": "^(|\\d{2}:\\d{2})$" },
         "priority": { "type": "string", "enum": ["Low", "Medium", "High"] },
@@ -37,210 +16,13 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["userId", "title", "description", "category", "subject", "dueDate", "dueTime", "priority", "status", "completedAt", "createdAt", "updatedAt"]
-    },
-    "Assignment": {
-      "title": "Assignment",
-      "description": "Course assignment with assigned date, submission deadline, and submission status.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "title": { "type": "string", "minLength": 1, "maxLength": 140 },
-        "subject": { "type": "string", "minLength": 1, "maxLength": 80 },
-        "description": { "type": "string", "minLength": 0, "maxLength": 1200 },
-        "assignedDate": { "type": "string", "minLength": 0, "maxLength": 10, "pattern": "^(|\\d{4}-\\d{2}-\\d{2})$" },
-        "dueDate": { "type": "string", "minLength": 10, "maxLength": 10, "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
-        "priority": { "type": "string", "enum": ["Low", "Medium", "High"] },
-        "status": { "type": "string", "enum": ["Not Started", "In Progress", "Submitted"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "title", "subject", "description", "assignedDate", "dueDate", "priority", "status", "createdAt", "updatedAt"]
-    },
-    "StudySession": {
-      "title": "StudySession",
-      "description": "Scheduled or completed study block linked to a subject and date/time.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "subject": { "type": "string", "minLength": 1, "maxLength": 80 },
-        "title": { "type": "string", "minLength": 1, "maxLength": 140 },
-        "description": { "type": "string", "minLength": 0, "maxLength": 1000 },
-        "date": { "type": "string", "minLength": 10, "maxLength": 10, "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
-        "startTime": { "type": "string", "minLength": 5, "maxLength": 5, "pattern": "^\\d{2}:\\d{2}$" },
-        "endTime": { "type": "string", "minLength": 5, "maxLength": 5, "pattern": "^\\d{2}:\\d{2}$" },
-        "durationMinutes": { "type": "number" },
-        "studyGoal": { "type": "string", "minLength": 0, "maxLength": 200 },
-        "status": { "type": "string", "enum": ["Scheduled", "Completed"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "subject", "title", "description", "date", "startTime", "endTime", "durationMinutes", "studyGoal", "status", "createdAt", "updatedAt"]
-    },
-    "Exam": {
-      "title": "Exam",
-      "description": "Upcoming or past academic examination with preparation status and topics.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "examName": { "type": "string", "minLength": 1, "maxLength": 140 },
-        "subject": { "type": "string", "minLength": 1, "maxLength": 80 },
-        "examDate": { "type": "string", "minLength": 10, "maxLength": 10, "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
-        "examTime": { "type": "string", "minLength": 0, "maxLength": 5, "pattern": "^(|\\d{2}:\\d{2})$" },
-        "examType": { "type": "string", "enum": ["Midterm", "Final", "Quiz", "Practical", "Viva", "Other"] },
-        "preparationStatus": { "type": "string", "enum": ["Not Started", "In Progress", "Ready"] },
-        "importantTopics": { "type": "string", "minLength": 0, "maxLength": 1000 },
-        "notes": { "type": "string", "minLength": 0, "maxLength": 1000 },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "examName", "subject", "examDate", "examTime", "examType", "preparationStatus", "importantTopics", "notes", "createdAt", "updatedAt"]
-    },
-    "TimetableEntry": {
-      "title": "TimetableEntry",
-      "description": "Weekly recurring class schedule entry.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "dayOfWeek": { "type": "string", "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] },
-        "startTime": { "type": "string", "minLength": 5, "maxLength": 5, "pattern": "^\\d{2}:\\d{2}$" },
-        "endTime": { "type": "string", "minLength": 5, "maxLength": 5, "pattern": "^\\d{2}:\\d{2}$" },
-        "subject": { "type": "string", "minLength": 1, "maxLength": 80 },
-        "faculty": { "type": "string", "minLength": 0, "maxLength": 100 },
-        "classroom": { "type": "string", "minLength": 0, "maxLength": 60 },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "dayOfWeek", "startTime", "endTime", "subject", "faculty", "classroom", "createdAt", "updatedAt"]
-    },
-    "Note": {
-      "title": "Note",
-      "description": "Academic study note categorized by subject with pin support.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "title": { "type": "string", "minLength": 1, "maxLength": 140 },
-        "subject": { "type": "string", "minLength": 1, "maxLength": 80 },
-        "content": { "type": "string", "minLength": 1, "maxLength": 5000 },
-        "isPinned": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "title", "subject", "content", "isPinned", "createdAt", "updatedAt"]
-    },
-    "Goal": {
-      "title": "Goal",
-      "description": "Personal daily or weekly academic/habit goal with progress tracking.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "title": { "type": "string", "minLength": 1, "maxLength": 140 },
-        "description": { "type": "string", "minLength": 0, "maxLength": 600 },
-        "cadence": { "type": "string", "enum": ["Daily", "Weekly"] },
-        "targetValue": { "type": "number" },
-        "currentValue": { "type": "number" },
-        "unit": { "type": "string", "minLength": 1, "maxLength": 30 },
-        "status": { "type": "string", "enum": ["Active", "Completed"] },
-        "completedAt": { "type": "string", "minLength": 0, "maxLength": 32 },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "title", "description", "cadence", "targetValue", "currentValue", "unit", "status", "completedAt", "createdAt", "updatedAt"]
-    },
-    "FocusSession": {
-      "title": "FocusSession",
-      "description": "Completed Pomodoro focus or break session record.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "mode": { "type": "string", "enum": ["focus", "shortBreak", "longBreak"] },
-        "durationMinutes": { "type": "number" },
-        "subject": { "type": "string", "minLength": 0, "maxLength": 80 },
-        "date": { "type": "string", "minLength": 10, "maxLength": 10, "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
-        "completedAt": { "type": "string", "format": "date-time" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "mode", "durationMinutes", "subject", "date", "completedAt", "createdAt"]
-    },
-    "Notification": {
-      "title": "Notification",
-      "description": "In-app academic alert or reminder with read tracking.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "sourceKey": { "type": "string", "minLength": 1, "maxLength": 128 },
-        "type": { "type": "string", "enum": ["assignment", "exam", "task", "study"] },
-        "title": { "type": "string", "minLength": 1, "maxLength": 140 },
-        "message": { "type": "string", "minLength": 1, "maxLength": 400 },
-        "dueDate": { "type": "string", "minLength": 0, "maxLength": 10 },
-        "isRead": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "sourceKey", "type", "title", "message", "dueDate", "isRead", "createdAt", "updatedAt"]
-    },
-    "CalendarEvent": {
-      "title": "CalendarEvent",
-      "description": "User-created personal or custom calendar event.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
-        "title": { "type": "string", "minLength": 1, "maxLength": 140 },
-        "description": { "type": "string", "minLength": 0, "maxLength": 800 },
-        "date": { "type": "string", "minLength": 10, "maxLength": 10, "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
-        "startTime": { "type": "string", "minLength": 0, "maxLength": 5, "pattern": "^(|\\d{2}:\\d{2})$" },
-        "endTime": { "type": "string", "minLength": 0, "maxLength": 5, "pattern": "^(|\\d{2}:\\d{2})$" },
-        "eventType": { "type": "string", "enum": ["Personal Event", "Study Session", "Task", "Assignment", "Exam"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "title", "description", "date", "startTime", "endTime", "eventType", "createdAt", "updatedAt"]
+      "required": ["title", "description", "category", "dueDate", "dueTime", "priority", "status", "completedAt", "createdAt", "updatedAt"]
     }
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": { "$ref": "#/entities/UserProfile" },
-      "description": "Private student profile and settings isolated to the owner."
-    },
     "/tasks/{taskId}": {
       "schema": { "$ref": "#/entities/Task" },
-      "description": "User-owned tasks."
-    },
-    "/assignments/{assignmentId}": {
-      "schema": { "$ref": "#/entities/Assignment" },
-      "description": "User-owned academic assignments."
-    },
-    "/studySessions/{sessionId}": {
-      "schema": { "$ref": "#/entities/StudySession" },
-      "description": "User-owned study sessions."
-    },
-    "/exams/{examId}": {
-      "schema": { "$ref": "#/entities/Exam" },
-      "description": "User-owned examinations."
-    },
-    "/timetable/{entryId}": {
-      "schema": { "$ref": "#/entities/TimetableEntry" },
-      "description": "User-owned weekly class timetable entries."
-    },
-    "/notes/{noteId}": {
-      "schema": { "$ref": "#/entities/Note" },
-      "description": "User-owned academic notes."
-    },
-    "/goals/{goalId}": {
-      "schema": { "$ref": "#/entities/Goal" },
-      "description": "User-owned daily and weekly study goals."
-    },
-    "/focusSessions/{focusId}": {
-      "schema": { "$ref": "#/entities/FocusSession" },
-      "description": "User-owned completed Pomodoro focus sessions."
-    },
-    "/notifications/{notificationId}": {
-      "schema": { "$ref": "#/entities/Notification" },
-      "description": "User-owned in-app academic notifications."
-    },
-    "/calendarEvents/{eventId}": {
-      "schema": { "$ref": "#/entities/CalendarEvent" },
-      "description": "User-owned custom calendar events."
+      "description": "Student tasks stored at application scope without login requirements."
     }
   }
 }

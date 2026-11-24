@@ -1,82 +1,43 @@
 import {
-  BarChart3,
-  BookOpen,
   CalendarDays,
   CheckSquare,
   ChevronLeft,
   ChevronRight,
-  FileText,
-  GraduationCap,
   LayoutDashboard,
-  LogOut,
-  Settings,
-  StickyNote,
-  Table2,
-  Target,
-  Timer,
   X,
 } from 'lucide-react';
-import type { User } from 'firebase/auth';
 import type { NavSection } from '../types/studyflow.ts';
 
 interface SidebarProps {
   activeSection: NavSection;
   onSelectSection: (section: NavSection) => void;
-  user: User;
-  displayName: string;
   collapsed: boolean;
   onToggleCollapse: () => void;
-  onLogout: () => void;
-  isLoggingOut: boolean;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
-  badges: {
-    tasks: number;
-    assignments: number;
-    exams: number;
-  };
+  pendingTaskCount: number;
 }
 
 const NAV_ITEMS: {
   id: NavSection;
   label: string;
   icon: typeof LayoutDashboard;
-  badgeKey?: 'tasks' | 'assignments' | 'exams';
+  showCount?: boolean;
 }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'tasks', label: 'My Tasks', icon: CheckSquare, badgeKey: 'tasks' },
+  { id: 'tasks', label: 'My Tasks', icon: CheckSquare, showCount: true },
   { id: 'calendar', label: 'Calendar', icon: CalendarDays },
-  { id: 'assignments', label: 'Assignments', icon: FileText, badgeKey: 'assignments' },
-  { id: 'study-planner', label: 'Study Planner', icon: BookOpen },
-  { id: 'exam-planner', label: 'Exam Planner', icon: GraduationCap, badgeKey: 'exams' },
-  { id: 'timetable', label: 'Timetable', icon: Table2 },
-  { id: 'notes', label: 'Notes', icon: StickyNote },
-  { id: 'goals', label: 'Goals', icon: Target },
-  { id: 'focus-timer', label: 'Focus Timer', icon: Timer },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-  { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
 export function Sidebar({
   activeSection,
   onSelectSection,
-  user,
-  displayName,
   collapsed,
   onToggleCollapse,
-  onLogout,
-  isLoggingOut,
   isOpenMobile,
   onCloseMobile,
-  badges,
+  pendingTaskCount,
 }: SidebarProps) {
-  const initials = displayName
-    .split(' ')
-    .map((p) => p[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-
   const handleNavClick = (section: NavSection) => {
     onSelectSection(section);
     onCloseMobile();
@@ -115,7 +76,7 @@ export function Sidebar({
                   STUDYFLOW
                 </span>
                 <span className="text-[11px] text-slate-500 block mt-0.5 truncate">
-                  Academic Planner
+                  Student Task Manager
                 </span>
               </div>
             )}
@@ -147,11 +108,10 @@ export function Sidebar({
         </div>
 
         {/* Navigation Links */}
-        <nav aria-label="Main navigation" className="flex-1 px-2.5 py-3 space-y-0.5 overflow-y-auto">
+        <nav aria-label="Main navigation" className="flex-1 px-2.5 py-4 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = activeSection === item.id;
-            const count = item.badgeKey ? badges[item.badgeKey] : undefined;
 
             return (
               <button
@@ -162,7 +122,7 @@ export function Sidebar({
                 aria-current={isActive ? 'page' : undefined}
                 className={`w-full flex items-center ${
                   isCompact ? 'justify-center px-2' : 'justify-between px-3'
-                } py-2 rounded-lg text-sm transition-colors cursor-pointer ${
+                } py-2.5 rounded-lg text-sm transition-colors cursor-pointer ${
                   isActive
                     ? 'bg-indigo-50 text-indigo-700 font-semibold'
                     : 'text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900'
@@ -177,13 +137,13 @@ export function Sidebar({
                   />
                   {!isCompact && <span className="truncate">{item.label}</span>}
                 </span>
-                {!isCompact && typeof count === 'number' && count > 0 && (
+                {!isCompact && item.showCount && pendingTaskCount > 0 && (
                   <span
                     className={`font-mono text-xs tabular-nums ${
                       isActive ? 'text-indigo-600' : 'text-slate-400'
                     }`}
                   >
-                    {count}
+                    {pendingTaskCount}
                   </span>
                 )}
               </button>
@@ -191,44 +151,11 @@ export function Sidebar({
           })}
         </nav>
 
-        {/* User Profile & Logout */}
-        <div className="p-3 border-t border-slate-200 space-y-2 shrink-0">
-          {!isCompact && (
-            <div className="flex items-center gap-2.5 px-2 py-1.5">
-              {user.photoURL ? (
-                <img
-                  src={user.photoURL}
-                  alt={displayName}
-                  referrerPolicy="no-referrer"
-                  className="h-8 w-8 rounded-full object-cover border border-slate-200 shrink-0"
-                />
-              ) : (
-                <div className="h-8 w-8 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold flex items-center justify-center shrink-0">
-                  {initials}
-                </div>
-              )}
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-slate-900 truncate">{displayName}</p>
-                <p className="text-[11px] text-slate-500 truncate">
-                  {user.email || (user.isAnonymous ? 'Guest Demo Mode' : 'Student Account')}
-                </p>
-              </div>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={onLogout}
-            disabled={isLoggingOut}
-            title={isCompact ? 'Logout' : undefined}
-            className={`w-full flex items-center ${
-              isCompact ? 'justify-center px-2' : 'gap-3 px-3'
-            } py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-red-50 hover:text-red-700 transition-colors disabled:opacity-50 cursor-pointer`}
-          >
-            <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
-            {!isCompact && <span>{isLoggingOut ? 'Signing out...' : 'Logout'}</span>}
-          </button>
-        </div>
+        {!isCompact && (
+          <div className="px-4 py-3 border-t border-slate-100 text-[11px] text-slate-400">
+            Plan Smarter. Study Better.
+          </div>
+        )}
       </div>
     );
   };
