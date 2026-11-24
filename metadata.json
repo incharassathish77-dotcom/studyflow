@@ -1,0 +1,6 @@
+{
+  "name": "TaskFlow",
+  "description": "Full-stack task management application with Firebase Authentication, Cloud Firestore persistence, priority organization, and real-time progress tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
